@@ -1,0 +1,18 @@
+# Ignore the .git directory
+\.git
+
+# Ignore the gitignore file
+\.gitignore
+
+# Ignore this ignore file (optional, but clean)
+.stow-local-ignore
+
+# Ignore documentation
+README\.md
+LICENSE
+
+# Ignore your installation scripts (if they are in the root)
+install\.sh
+packages\.txt
+
+\boomer/
