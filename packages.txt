@@ -52,3 +52,7 @@ clipmenu
 nim
 make
 
+libx11
+libxinerama
+libxft
+base-devel

@@ -164,29 +164,31 @@ install_programs_from_source()
 {
     echo "==> Installing programs from source..."
 
-    # 1. THE "RECURSIVE" FIX
-    # This checks if the folders are empty and pulls the code if missing.
+    # 1. ENSURE SUBMODULES (Just in case boomer or others are submodules)
+    # If dmenu is just a regular folder, this won't hurt it.
     if [ -d "$SCRIPT_DIR/.git" ]; then
         echo "    Initializing git submodules..."
-        # We force git to trust the directory just in case of ownership issues
         git config --global --add safe.directory "$SCRIPT_DIR"
         git -C "$SCRIPT_DIR" submodule update --init --recursive
     fi
 
-    # 2. INSTALL DMENU
-    # dependency check: X11 libs are required to compile dmenu
-    if pacman -Q libx11 libxinerama libxft &>/dev/null; then
-        if [ -f "$SCRIPT_DIR/dmenu/Makefile" ]; then
-            echo "    Compiling dmenu..."
-            cd "$SCRIPT_DIR/dmenu"
-            # specific fix: sometimes config.mk assumes /usr/local, but some systems prefer /usr
-            # We stick to default make install (usually /usr/local)
+    # 2. INSTALL YOUR PATCHED DMENU
+    # We look for the folder 'dmenu' inside your repo
+    if [ -d "$SCRIPT_DIR/dmenu" ]; then
+        echo "    Compiling your patched dmenu..."
+        cd "$SCRIPT_DIR/dmenu"
+        
+        # Check if config.mk exists (standard for suckless tools)
+        if [ -f "config.mk" ]; then
+            # Clean and Install
+            # sudo is not needed here because the script is already running as root
             make clean install
+            echo "    Dmenu installed."
         else
-            echo "WARNING: dmenu source code not found in '$SCRIPT_DIR/dmenu'. Is the submodule empty?"
+            echo "WARNING: No 'config.mk' found in dmenu folder. Is it the source code?"
         fi
     else
-        echo "ERROR: Missing dmenu dependencies. Ensure 'libx11 libxinerama libxft' are in packages.txt"
+        echo "WARNING: '$SCRIPT_DIR/dmenu' folder not found. Skipping dmenu."
     fi
 
     # 3. INSTALL BOOMER
@@ -195,27 +197,28 @@ install_programs_from_source()
         cd "$SCRIPT_DIR/boomer"
 
         if command -v nimble >/dev/null; then
-            # Clean previous builds
+            # Clean previous builds just in case
             rm -f boomer
             
-            # Build
+            # Build release version
             nimble build -d:release --accept
             
-            # Install
+            # Install manually to /usr/local/bin
             if [ -f "boomer" ]; then
                 cp boomer /usr/local/bin/
                 chmod 755 /usr/local/bin/boomer
-                echo "    Boomer installed successfully."
+                echo "    Boomer installed to /usr/local/bin."
             else
-                echo "ERROR: Boomer binary was not created. Build failed."
+                echo "ERROR: Boomer binary not found after build."
             fi
         else
-            echo "WARNING: 'nimble' (Nim package manager) not found. Skipping boomer."
+            echo "WARNING: 'nimble' not found. Is 'nim' installed?"
         fi
     else
-        echo "WARNING: boomer directory not found."
+        echo "WARNING: '$SCRIPT_DIR/boomer' folder not found. Skipping."
     fi
 }
+
 setup_user_env "user"
 setup_user_env "work"
 install_programs_from_source
