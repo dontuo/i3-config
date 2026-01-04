@@ -238,12 +238,4 @@ echo "user:$USER_PASS" | chpasswd
 echo "work:$WORK_PASS" | chpasswd
 unset ROOT_PASS USER_PASS WORK_PASS
 
-echo "==> Uninstalling Official Packages (packages_delete.txt)"
-if [ -f "$SCRIPT_DIR/packages.txt" ]; then
-    grep -R '^\s*#|^\s*$' "$SCRIPT_DIR/packages_delete.txt" | pacman -R --noconfirm --needed -
-else
-    echo "WARNING: packages.txt not found in $SCRIPT_DIR"
-fi
-
-
 echo "==> Done. Reboot when ready."
