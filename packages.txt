@@ -11,10 +11,8 @@ lib32-libpipewire
 pavucontrol
 playerctl
 
-
-
 # window manager
-i3-wm 
+i3-wm
 xorg
 xorg-xrandr
 xorg-setxkbmap
@@ -35,12 +33,12 @@ nitrogen
 ttf-terminus-nerd
 ttf-jetbrains-mono-nerd
 dunst
-ueberzugpp 
+ueberzugpp
 ffmpegthumbnailer
 flameshot
 fish
 sudo
-zathura 
+zathura
 zathura-pdf-poppler
 picom
 lazygit
