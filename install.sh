@@ -58,7 +58,7 @@ pacman -S --noconfirm \
 
 echo "==> Installing Official Packages (packages.txt)"
 if [ -f "$SCRIPT_DIR/packages.txt" ]; then
-    grep -vE '^\s*#|^\s*$' "$SCRIPT_DIR/packages.txt" | pacman -S --noconfirm --needed -
+    grep -vE '^\s*#|^\s*$' "$SCRIPT_DIR/packages.txt" | pacman -S --needed -
 else
     echo "WARNING: packages.txt not found in $SCRIPT_DIR"
 fi

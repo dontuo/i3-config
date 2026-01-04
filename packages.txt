@@ -29,7 +29,6 @@ sxiv
 neovim
 lf
 neovide
-nitrogen
 ttf-terminus-nerd
 ttf-jetbrains-mono-nerd
 dunst
