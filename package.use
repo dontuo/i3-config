@@ -1,0 +1,45 @@
+# --- GLOBAL USE FLAGS ---
+# These apply to ALL packages. 
+# We disable systemd/gnome/kde to keep it minimal and avoid bloat.
+*/* X xinerama xft openrc elogind dbus udev alsa pulseaudio pipewire \
+    screencast fontconfig savedconfig startup-notification \
+    -systemd -gnome -kde -wayland -aqua -qt5 -qt6
+
+# --- PACKAGE SPECIFIC USE FLAGS ---
+
+# SYSTEM CORE
+sys-boot/grub device-mapper mount
+
+# AUDIO (Pipewire needs 'sound-server' to replace PulseAudio)
+media-video/pipewire sound-server extra jack-client bluetooth v4l
+media-video/wireplumber system-service
+media-sound/pulsemixer -*
+
+# WINDOW MANAGER (i3)
+x11-wm/i3 doc
+
+# TERMINAL & SHELL
+x11-terms/kitty -wayland
+app-shells/fish -split-usr
+
+# BROWSERS
+# Enable proprietary codecs for video playback (Netflix/YouTube)
+www-client/firefox clang hwaccel pulseaudio openh264 system-av1 system-harfbuzz system-icu system-jpeg system-libevent system-libvpx system-webp
+
+# EDITORS
+# Neovim needs LuaJIT and usually tree-sitter
+app-editors/neovim lua nvimpager
+
+# MEDIA PLAYERS
+# MPV needs a lot of enabling for good quality
+media-video/mpv cli lua nvenc vulkan opengl xv X alsa pulseaudio
+
+# SCREENSHOTS
+media-gfx/flameshot -wayland
+
+# NETWORK
+net-misc/networkmanager nss wifi connection-sharing modemmanager dhcpcd
+
+# TOOLS
+app-admin/sudo -sendmail
+dev-vcs/git highlight curl

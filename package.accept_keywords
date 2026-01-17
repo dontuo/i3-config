@@ -1,0 +1,18 @@
+# Allow unstable/testing versions for these packages
+# often needed for newer kernels, drivers, or specific tools
+sys-kernel/gentoo-sources ~amd64
+sys-kernel/linux-firmware ~amd64
+
+# Multimedia often needs newer libs
+media-video/pipewire ~amd64
+media-video/wireplumber ~amd64
+media-libs/mesa ~amd64
+
+# GURU packages (AUR equivalent) are almost always "testing"
+# You might need to add specific tools here if emerge fails
+x11-misc/i3lock-color ~amd64
+net-misc/yt-dlp ~amd64
+
+# If you use a browser bin like firefox-bin it is usually stable,
+# but sometimes you need the latest:
+www-client/firefox ~amd64

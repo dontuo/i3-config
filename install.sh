@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 # Get directory where this script is located
@@ -10,7 +10,6 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
 echo "==> Setup Configuration"
 
 DETECTED_REPO=$(git -C "$SCRIPT_DIR" config --get remote.origin.url || echo "")
-
 read -rp "Enter hostname: " HOSTNAME_VAR
 
 if [ -z "$DETECTED_REPO" ]; then
@@ -28,218 +27,152 @@ echo "Enter password for USER 'work':"
 read -rs WORK_PASS
 
 echo ""
-echo "==> Configuration saved. Starting installation..."
+echo "==> Configuration saved. Starting Binary-First Installation..."
 
 # ==========================================
-# 2. SYSTEM BASE
+# 2. PORTAGE CONFIGURATION
 # ==========================================
+echo "--> Installing Portage Config Files..."
 
-echo "==> Timezone & Clock"
-ln -sf /usr/share/zoneinfo/Europe/Kyiv /etc/localtime
-hwclock --systohc
+# 1. make.conf
+if [ -f "$SCRIPT_DIR/make.conf" ]; then
+    cp "$SCRIPT_DIR/make.conf" /etc/portage/make.conf
+else
+    echo "ERROR: make.conf not found."
+    exit 1
+fi
 
-echo "==> Locale"
-sed -i 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+# 2. package.use
+if [ -d /etc/portage/package.use ]; then rm -rf /etc/portage/package.use; fi
+mkdir -p /etc/portage/package.use
+if [ -f "$SCRIPT_DIR/package.use" ]; then
+    cp "$SCRIPT_DIR/package.use" /etc/portage/package.use/custom
+fi
+
+# 3. package.accept_keywords
+if [ -d /etc/portage/package.accept_keywords ]; then rm -rf /etc/portage/package.accept_keywords; fi
+mkdir -p /etc/portage/package.accept_keywords
+if [ -f "$SCRIPT_DIR/package.accept_keywords" ]; then
+    cp "$SCRIPT_DIR/package.accept_keywords" /etc/portage/package.accept_keywords/custom
+fi
+
+# 4. package.license
+if [ -d /etc/portage/package.license ]; then rm -rf /etc/portage/package.license; fi
+mkdir -p /etc/portage/package.license
+if [ -f "$SCRIPT_DIR/package.license" ]; then
+    cp "$SCRIPT_DIR/package.license" /etc/portage/package.license/custom
+fi
+
+echo "--> Configuring Binary Repository (Binhost)..."
+mkdir -p /etc/portage/binrepos.conf
+cat <<EOF > /etc/portage/binrepos.conf/gentoobinhost.conf
+[gentoobinhost]
+priority = 1
+sync-uri = https://gentoo.osuosl.org/releases/amd64/binpackages/23.0/x86-64/
+EOF
+
+echo "--> Syncing Repositories..."
+emerge-webrsync
+emerge --sync
+
+echo "--> Selecting Profile (Desktop OpenRC)..."
+eselect profile set default/linux/amd64/23.0/desktop
+
+echo "--> Updating @world (Using Binaries)..."
+# -g = getbinpkg, -k = usepkg
+# --autounmask=y --autounmask-write: automatically write required config changes if we missed something
+# --dispatch-conf: we might need to accept those changes manually, but this flag helps
+emerge --verbose --update --deep --newuse -gk @world
+
+# ==========================================
+# 3. INSTALL PACKAGES
+# ==========================================
+echo "--> Enabling GURU Overlay..."
+emerge -gk app-eselect/eselect-repository
+eselect repository enable guru
+emaint sync -r guru
+
+echo "--> Installing Packages..."
+if [ -f "$SCRIPT_DIR/packages_world" ]; then
+    PACKAGES=$(grep -vE '^\s*#|^\s*$' "$SCRIPT_DIR/packages_world")
+    
+    # We use -gk for binaries. 
+    # --autounmask-continue helps if a package needs a keyword change we missed; 
+    # Portage will try to adjust config and continue.
+    echo "$PACKAGES" | xargs emerge --ask=n --verbose --keep-going -gk --autounmask-continue
+else
+    echo "WARNING: packages_world file not found!"
+fi
+
+# ==========================================
+# 4. SYSTEM CONFIGURATION
+# ==========================================
+echo "--> Timezone & Locale..."
+echo "Europe/Kyiv" > /etc/timezone
+emerge --config sys-libs/timezone-data
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 locale-gen
-echo "LANG=en_US.UTF-8" > /etc/locale.conf
+eselect locale set en_US.utf8
 
-echo "==> Hostname"
-echo "$HOSTNAME_VAR" > /etc/hostname
+echo "--> Hostname..."
+echo "hostname=\"$HOSTNAME_VAR\"" > /etc/conf.d/hostname
 
-echo "==> Enabling Multilib Repo (32-bit support)"
-sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
-pacman -Sy
+echo "--> Passwords..."
+echo "root:$ROOT_PASS" | chpasswd
 
-echo "==> Installing Base Packages"
-# 'go' is helpful for yay compilation
-pacman -S --noconfirm \
-  grub efibootmgr sudo fish \
-  networkmanager vim git stow base-devel go
-
-echo "==> Installing Official Packages (packages.txt)"
-if [ -f "$SCRIPT_DIR/packages.txt" ]; then
-    grep -vE '^\s*#|^\s*$' "$SCRIPT_DIR/packages.txt" | pacman -S --needed -
-else
-    echo "WARNING: packages.txt not found in $SCRIPT_DIR"
-fi
-
-echo "==> Enable NetworkManager"
-systemctl enable NetworkManager
-
-echo "==> Install GRUB"
-grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=GRUB
-grub-mkconfig -o /boot/grub/grub.cfg
+echo "--> Services..."
+rc-update add NetworkManager default
+rc-update add dbus default
+rc-update add elogind boot
 
 # ==========================================
-# 3. USERS & PRIVILEGES
+# 5. USERS & DOTFILES
 # ==========================================
-
-echo "==> Creating Users"
-id "user" &>/dev/null || useradd -m -G wheel -s /bin/fish user
-id "work" &>/dev/null || useradd -m -G wheel -s /bin/fish work
-
-echo "==> Configuring Sudo (Temporary NOPASSWD)"
-# Allow wheel to sudo without password temporarily for yay installation
-echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/temp_install
-
-# ==========================================
-# 4. INSTALL YAY & AUR PACKAGES
-# ==========================================
-
-echo "==> Installing Yay (AUR Helper)"
-if ! command -v yay &> /dev/null; then
-    cd /opt
-    git clone https://aur.archlinux.org/yay.git
-    chown -R user:user /opt/yay
-    cd /opt/yay
-    # Build as 'user'
-    sudo -u user makepkg -si --noconfirm
-    cd ..
-    rm -rf yay
-else
-    echo "    Yay is already installed."
-fi
-
-echo "==> Installing AUR Packages (packages_aur.txt)"
-if [ -f "$SCRIPT_DIR/packages_aur.txt" ]; then
-    echo "    installing packages_aur.txt..."
-    grep -vE '^\s*#|^\s*$' "$SCRIPT_DIR/packages_aur.txt" | sudo -u user yay -S --noconfirm --needed -
-else
-    echo "WARNING: packages_aur.txt not found in $SCRIPT_DIR"
-fi
-
-# ==========================================
-# 5. DOTFILES SETUP
-# ==========================================
-
-setup_user_env() {
+setup_user() {
     local USERNAME=$1
-    echo "--> Setting up environment for: $USERNAME"
+    local PASSWORD=$2
+    local REPO_URL=$3
 
+    echo "--> Setting up user: $USERNAME"
+    id "$USERNAME" &>/dev/null || useradd -m -G wheel,audio,video,usb,input -s /bin/fish "$USERNAME"
+    echo "$USERNAME:$PASSWORD" | chpasswd
+    
     local TARGET_DIR="/home/$USERNAME/dotfiles"
     
-    # 1. Clone/Pull Dotfiles
-    if [ -d "$TARGET_DIR" ]; then
-        echo "    Updating dotfiles..."
-        sudo -u "$USERNAME" git -C "$TARGET_DIR" pull
-    else
-        echo "    Cloning dotfiles..."
-        sudo -u "$USERNAME" git clone --recursive "$DOTFILES_REPO" "$TARGET_DIR"
-    fi
-
-    # 2. Setup Ignore file
-    echo "install.sh" > "$TARGET_DIR/.stow-local-ignore"
-    echo "packages.txt" >> "$TARGET_DIR/.stow-local-ignore"
-    echo "packages_aur.txt" >> "$TARGET_DIR/.stow-local-ignore"
-    echo ".git" >> "$TARGET_DIR/.stow-local-ignore"
-    echo "README.md" >> "$TARGET_DIR/.stow-local-ignore"
-    chown "$USERNAME:$USERNAME" "$TARGET_DIR/.stow-local-ignore"
-
-    # 3. Stow
-    echo "    Stowing configuration..."
-    sudo -u "$USERNAME" sh -c "cd $TARGET_DIR && stow ."
-    #
-    # 4. Fish Auto-start
-    local FISH_CONFIG_DIR="/home/$USERNAME/.config/fish"
-    sudo -u "$USERNAME" mkdir -p "$FISH_CONFIG_DIR"
-    local FISH_CONF="$FISH_CONFIG_DIR/config.fish"
-    
-    sudo -u "$USERNAME" touch "$FISH_CONF"
-    
-    if ! grep -q "startx" "$FISH_CONF"; then
-        {
-            echo "" 
-            echo '# Auto-start X on TTY1' 
-            echo 'if status is-login' 
-            echo '    if test -z "$DISPLAY" -a "$XDG_VTNR" = 1' 
-            echo '        exec startx -- -keeptty' 
-            echo '    end' 
-            echo 'end'
-        } >> "$FISH_CONF"
-    fi
-    
-    # Add .local/bin to PATH (for manual installs like boomer)
-    if ! grep -q "fish_add_path" "$FISH_CONF"; then
-        echo 'fish_add_path ~/.local/bin' >> "$FISH_CONF"
-    fi
-}
-
-install_programs_from_source()
-{
-    echo "==> Installing programs from source..."
-
-    # 1. ENSURE SUBMODULES (Just in case boomer or others are submodules)
-    # If dmenu is just a regular folder, this won't hurt it.
-    if [ -d "$SCRIPT_DIR/.git" ]; then
-        echo "    Initializing git submodules..."
-        git config --global --add safe.directory "$SCRIPT_DIR"
-        git -C "$SCRIPT_DIR" submodule update --init --recursive
-    fi
-
-    # 2. INSTALL YOUR PATCHED DMENU
-    # We look for the folder 'dmenu' inside your repo
-    if [ -d "$SCRIPT_DIR/dmenu" ]; then
-        echo "    Compiling your patched dmenu..."
-        cd "$SCRIPT_DIR/dmenu"
+    if [ ! -z "$REPO_URL" ]; then
+        if [ -d "$TARGET_DIR" ]; then
+            echo "    Updating dotfiles..."
+            sudo -u "$USERNAME" git -C "$TARGET_DIR" pull
+        else
+            echo "    Cloning dotfiles..."
+            sudo -u "$USERNAME" git clone --recursive "$REPO_URL" "$TARGET_DIR"
+        fi
         
-        # Check if config.mk exists (standard for suckless tools)
-        if [ -f "config.mk" ]; then
-            # Clean and Install
-            # sudo is not needed here because the script is already running as root
-            make clean install
-            echo "    Dmenu installed."
-        else
-            echo "WARNING: No 'config.mk' found in dmenu folder. Is it the source code?"
-        fi
-    else
-        echo "WARNING: '$SCRIPT_DIR/dmenu' folder not found. Skipping dmenu."
-    fi
-
-    # 3. INSTALL BOOMER
-    if [ -d "$SCRIPT_DIR/boomer" ]; then
-        echo "    Compiling boomer..."
-        cd "$SCRIPT_DIR/boomer"
-
-        if command -v nimble >/dev/null; then
-            # Clean previous builds just in case
-            rm -f boomer
-            
-            # Build release version
-            nimble build -d:release --accept
-            
-            # Install manually to /usr/local/bin
-            if [ -f "boomer" ]; then
-                cp boomer /usr/local/bin/
-                chmod 755 /usr/local/bin/boomer
-                echo "    Boomer installed to /usr/local/bin."
-            else
-                echo "ERROR: Boomer binary not found after build."
-            fi
-        else
-            echo "WARNING: 'nimble' not found. Is 'nim' installed?"
-        fi
-    else
-        echo "WARNING: '$SCRIPT_DIR/boomer' folder not found. Skipping."
+        # Add ignores
+        for f in install_gentoo.sh make.conf package.use package.accept_keywords package.license packages_world; do
+            echo "$f" >> "$TARGET_DIR/.stow-local-ignore"
+        done
+        chown "$USERNAME:$USERNAME" "$TARGET_DIR/.stow-local-ignore"
+        
+        echo "    Stowing..."
+        sudo -u "$USERNAME" sh -c "cd $TARGET_DIR && stow ."
     fi
 }
 
-setup_user_env "user"
-setup_user_env "work"
-install_programs_from_source
-
-# ==========================================
-# 6. FINALIZATION
-# ==========================================
-
-echo "==> Reverting Sudo to Password Required"
-rm /etc/sudoers.d/temp_install
-# Standard Arch sudo uncomment (Password required)
-sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
-
-echo "==> Applying passwords"
-echo "root:$ROOT_PASS" | chpasswd
-echo "user:$USER_PASS" | chpasswd
-echo "work:$WORK_PASS" | chpasswd
+setup_user "user" "$USER_PASS" "$DOTFILES_REPO"
+setup_user "work" "$WORK_PASS" "$DOTFILES_REPO"
 unset ROOT_PASS USER_PASS WORK_PASS
+
+echo "--> Sudo..."
+mkdir -p /etc/sudoers.d
+echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/wheel
+chmod 440 /etc/sudoers.d/wheel
+
+# ==========================================
+# 6. BOOTLOADER
+# ==========================================
+echo "--> GRUB..."
+grub-install --target=x86_64-efi --efi-directory=/boot
+grub-mkconfig -o /boot/grub/grub.cfg
 
 echo "==> Done. Reboot when ready."
