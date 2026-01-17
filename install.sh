@@ -79,16 +79,24 @@ echo "--> Selecting Profile (Desktop OpenRC)..."
 eselect profile set default/linux/amd64/23.0/desktop
 
 echo "--> Updating @world (Using Binaries)..."
-# -g = getbinpkg, -k = usepkg
-# --autounmask=y --autounmask-write: automatically write required config changes if we missed something
-# --dispatch-conf: we might need to accept those changes manually, but this flag helps
-emerge --verbose --update --deep --newuse -gk @world
+# Updated logic:
+# 1. Try to install with binaries, respecting configs.
+# 2. If it fails (usually due to config needs), write changes (--autounmask-write).
+# 3. Use 'etc-update' to auto-accept those changes (-5 = auto-accept).
+# 4. Try again.
+emerge --verbose --update --deep --newuse -gk --binpkg-respect-use=n --autounmask-write @world || {
+    echo "!! First pass failed. Auto-accepting configuration changes..."
+    # -5 means: automatically merge trivial changes, force update others
+    yes | etc-update --automode -5
+    echo "!! Retrying update..."
+    emerge --verbose --update --deep --newuse -gk --binpkg-respect-use=n @world
+}
 
 # ==========================================
 # 3. INSTALL PACKAGES
 # ==========================================
 echo "--> Enabling GURU Overlay..."
-emerge -gk app-eselect/eselect-repository
+emerge -gk --binpkg-respect-use=n app-eselect/eselect-repository
 eselect repository enable guru
 emaint sync -r guru
 
@@ -96,10 +104,8 @@ echo "--> Installing Packages..."
 if [ -f "$SCRIPT_DIR/packages_world" ]; then
     PACKAGES=$(grep -vE '^\s*#|^\s*$' "$SCRIPT_DIR/packages_world")
     
-    # We use -gk for binaries. 
-    # --autounmask-continue helps if a package needs a keyword change we missed; 
-    # Portage will try to adjust config and continue.
-    echo "$PACKAGES" | xargs emerge --ask=n --verbose --keep-going -gk --autounmask-continue
+    # Updated: Added --binpkg-respect-use=n to force binary usage
+    echo "$PACKAGES" | xargs emerge --ask=n --verbose --keep-going -gk --binpkg-respect-use=n --autounmask-continue
 else
     echo "WARNING: packages_world file not found!"
 fi
