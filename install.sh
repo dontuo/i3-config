@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-# Get directory where this script is located
 SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
 
 # ==========================================
@@ -27,14 +26,13 @@ echo "Enter password for USER 'work':"
 read -rs WORK_PASS
 
 echo ""
-echo "==> Configuration saved. Starting Binary-First Installation..."
+echo "==> Configuration saved. Starting Installation..."
 
 # ==========================================
 # 2. PORTAGE CONFIGURATION
 # ==========================================
 echo "--> Installing Portage Config Files..."
 
-# 1. make.conf
 if [ -f "$SCRIPT_DIR/make.conf" ]; then
     cp "$SCRIPT_DIR/make.conf" /etc/portage/make.conf
 else
@@ -42,28 +40,16 @@ else
     exit 1
 fi
 
-# 2. package.use
-if [ -d /etc/portage/package.use ]; then rm -rf /etc/portage/package.use; fi
-mkdir -p /etc/portage/package.use
-if [ -f "$SCRIPT_DIR/package.use" ]; then
-    cp "$SCRIPT_DIR/package.use" /etc/portage/package.use/custom
-fi
+# Clean and recreate config directories
+for dir in package.use package.accept_keywords package.license; do
+    rm -rf "/etc/portage/$dir"
+    mkdir -p "/etc/portage/$dir"
+    if [ -f "$SCRIPT_DIR/$dir" ]; then
+        cp "$SCRIPT_DIR/$dir" "/etc/portage/$dir/custom"
+    fi
+done
 
-# 3. package.accept_keywords
-if [ -d /etc/portage/package.accept_keywords ]; then rm -rf /etc/portage/package.accept_keywords; fi
-mkdir -p /etc/portage/package.accept_keywords
-if [ -f "$SCRIPT_DIR/package.accept_keywords" ]; then
-    cp "$SCRIPT_DIR/package.accept_keywords" /etc/portage/package.accept_keywords/custom
-fi
-
-# 4. package.license
-if [ -d /etc/portage/package.license ]; then rm -rf /etc/portage/package.license; fi
-mkdir -p /etc/portage/package.license
-if [ -f "$SCRIPT_DIR/package.license" ]; then
-    cp "$SCRIPT_DIR/package.license" /etc/portage/package.license/custom
-fi
-
-echo "--> Configuring Binary Repository (Binhost)..."
+echo "--> Configuring Binary Repository..."
 mkdir -p /etc/portage/binrepos.conf
 cat <<EOF > /etc/portage/binrepos.conf/gentoobinhost.conf
 [gentoobinhost]
@@ -75,21 +61,19 @@ echo "--> Syncing Repositories..."
 emerge-webrsync
 emerge --sync
 
-echo "--> Selecting Profile (Desktop OpenRC)..."
+echo "--> Selecting Profile..."
 eselect profile set default/linux/amd64/23.0/desktop
 
-echo "--> Updating @world (Using Binaries)..."
-# Updated logic:
-# 1. Try to install with binaries, respecting configs.
-# 2. If it fails (usually due to config needs), write changes (--autounmask-write).
-# 3. Use 'etc-update' to auto-accept those changes (-5 = auto-accept).
-# 4. Try again.
-emerge --verbose --update --deep --newuse -gk --binpkg-respect-use=n --autounmask-write @world || {
-    echo "!! First pass failed. Auto-accepting configuration changes..."
-    # -5 means: automatically merge trivial changes, force update others
+echo "--> Updating @world..."
+# FIX APPLIED HERE:
+# 1. Added --autounmask-backtrack=y (Allows deep dependency calculation)
+# 2. Added --autounmask-keep-masks=y (Prevents unrelated unmasking issues)
+CMD_ARGS="--verbose --update --deep --newuse -gk --binpkg-respect-use=n --autounmask-write --autounmask-backtrack=y --autounmask-keep-masks=y"
+
+emerge $CMD_ARGS @world || {
+    echo "!! Emerge failed. Applying config changes and retrying..."
     yes | etc-update --automode -5
-    echo "!! Retrying update..."
-    emerge --verbose --update --deep --newuse -gk --binpkg-respect-use=n @world
+    emerge $CMD_ARGS @world
 }
 
 # ==========================================
@@ -104,8 +88,8 @@ echo "--> Installing Packages..."
 if [ -f "$SCRIPT_DIR/packages_world" ]; then
     PACKAGES=$(grep -vE '^\s*#|^\s*$' "$SCRIPT_DIR/packages_world")
     
-    # Updated: Added --binpkg-respect-use=n to force binary usage
-    echo "$PACKAGES" | xargs emerge --ask=n --verbose --keep-going -gk --binpkg-respect-use=n --autounmask-continue
+    # Applied the same backtrack flag here
+    echo "$PACKAGES" | xargs emerge --ask=n --verbose --keep-going -gk --binpkg-respect-use=n --autounmask-continue --autounmask-backtrack=y
 else
     echo "WARNING: packages_world file not found!"
 fi
