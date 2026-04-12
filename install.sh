@@ -221,6 +221,21 @@ install_programs_from_source()
     else
         echo "WARNING: '$SCRIPT_DIR/boomer' folder not found. Skipping."
     fi
+
+    # 3. INSTALL LITEMDVIEW
+    if [ -d "$SCRIPT_DIR/litemdview" ]; then
+        echo "    Compiling litemdview..."
+        cd "$SCRIPT_DIR/litemdview"
+        
+        # Clean and Install
+        ./bootstrap
+        ./configure
+        make
+        make clean install
+        echo "    litemdview installed."
+    else
+        echo "WARNING: '$SCRIPT_DIR/litemdview' folder not found. Skipping litemdview."
+    fi
 }
 
 setup_user_env "user"
