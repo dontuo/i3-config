@@ -242,19 +242,19 @@ install_programs_from_source()
     fi
 
     # 3. INSTALL LITEMDVIEW
-    if [ -d "$SCRIPT_DIR/litemdview" ]; then
-        echo "    Compiling litemdview..."
-        cd "$SCRIPT_DIR/litemdview"
-        
-        # Clean and Install
-        ./bootstrap
-        ./configure
-        make
-        make clean install
-        echo "    litemdview installed."
-    else
-        echo "WARNING: '$SCRIPT_DIR/litemdview' folder not found. Skipping litemdview."
-    fi
+    #if [ -d "$SCRIPT_DIR/litemdview" ]; then
+    #    echo "    Compiling litemdview..."
+    #    cd "$SCRIPT_DIR/litemdview"
+    #    
+    #    # Clean and Install
+    #    ./bootstrap
+    #    ./configure
+    #    make
+    #    make clean install
+    #    echo "    litemdview installed."
+    #else
+    #    echo "WARNING: '$SCRIPT_DIR/litemdview' folder not found. Skipping litemdview."
+    #fi
     
     # 4. INSTALL GRADON
     if [ -d "$SCRIPT_DIR/dragon" ]; then
