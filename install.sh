@@ -236,6 +236,18 @@ install_programs_from_source()
     else
         echo "WARNING: '$SCRIPT_DIR/litemdview' folder not found. Skipping litemdview."
     fi
+    
+    # 4. INSTALL GRADON
+    if [ -d "$SCRIPT_DIR/dragon" ]; then
+        echo "    Compiling dragon..."
+        cd "$SCRIPT_DIR/dragon"
+        
+        # Clean and Install
+        make clean install
+        echo "    dragon installed."
+    else
+        echo "WARNING: '$SCRIPT_DIR/dragon' folder not found. Skipping dragon."
+    fi
 }
 
 setup_user_env "user"
