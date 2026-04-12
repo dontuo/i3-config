@@ -60,5 +60,5 @@ libxinerama
 libxft
 base-devel
 
-fuh
+feh
 python-pywal
