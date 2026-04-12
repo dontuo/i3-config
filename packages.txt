@@ -62,3 +62,4 @@ base-devel
 
 feh
 python-pywal
+libspng

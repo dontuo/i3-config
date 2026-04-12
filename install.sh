@@ -247,6 +247,7 @@ install_programs_from_source()
         cd "$SCRIPT_DIR/litemdview"
         
         # Clean and Install
+        ./autoupdate
         ./bootstrap
         ./configure
         make
