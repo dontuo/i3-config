@@ -2,7 +2,7 @@
 set $mod Mod4
 
 # Include the Gentoo Dark Theme
-include themes/gentoo_dark
+#include themes/gentoo_dark
 include autostart.conf 
 include keybinds.conf 
 
@@ -18,3 +18,12 @@ new_window 1pixel
 default_border pixel 
 focus_follows_mouse yes
 mouse_warping output
+
+# Include the generated color file
+set_from_resource $bg color0
+set_from_resource $fg color7
+set_from_resource $border color4
+
+# Apply to windows
+client.focused $border $border $fg $border
+client.unfocused $bg $bg $fg $bg

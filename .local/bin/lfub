@@ -12,7 +12,7 @@ cleanup() {
 }
 
 if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
-	lf "$@"
+    lf -config ~/.config/lf/lfrc
 else
 	[ ! -d "$HOME/.cache/lf" ] && mkdir -p "$HOME/.cache/lf"
 	export FIFO_UEBERZUG="$HOME/.cache/lf/ueberzug-$$"

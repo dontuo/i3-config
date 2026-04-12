@@ -1,0 +1,28 @@
+[global]
+    follow = mouse
+    width = 300
+    height = 300
+    origin = top-right
+    offset = 10x50
+    separator_height = 2
+    padding = 8
+    horizontal_padding = 8
+    frame_width = 2
+    frame_color = "#C2BEC9"
+    separator_color = "auto"
+    font = TerminessNerdFont 10
+
+[urgency_low]
+    background = "#1e192b"
+    foreground = "#c6c5ca"
+    timeout = 5
+
+[urgency_normal]
+    background = "#1e192b"
+    foreground = "#c6c5ca"
+    timeout = 10
+
+[urgency_critical]
+    background = "#8C76C3"
+    foreground = "#c6c5ca"
+    timeout = 0

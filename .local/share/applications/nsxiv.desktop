@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=nsxiv
+GenericName=Image Viewer
+Exec=nsxiv %f
+MimeType=image/jpeg;image/png;image/gif;
+Terminal=false
+Categories=Graphics;Viewer;

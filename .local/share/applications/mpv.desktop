@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=mpv
+GenericName=Media Player
+Exec=mpv %u
+MimeType=video/mp4;video/x-matroska;video/webm;audio/mpeg;
+Terminal=false
+Categories=AudioVideo;Player;

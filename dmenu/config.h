@@ -15,8 +15,21 @@ static const char *colors[SchemeLast][2] = {
 	/* fg         bg       */
 	[SchemeNorm] = { "#C5C2D6", "#121212" }, /* Muted Lavender text, Deep Dark background */
 	[SchemeSel]  = { "#FFFFFF", "#54487A" }, /* White text, Gentoo Purple background */
-	[SchemeOut]  = { "#000000", "#7A5ADA" }, /* Black text, Lighter Purple (Secondary) */
+
+    [SchemeOut]  = { "#000000", "#7A5ADA" }, /* Black text, Lighter Purple (Secondary) */
 };
+static const char *xres[] = {
+    "dmenu.background",
+    "dmenu.foreground",
+    "dmenu.selbackground",
+    "dmenu.selforeground",
+};
+//static const char *colors[SchemeLast][2] = {
+//    /* fg         bg       */
+//    [SchemeNorm] = { "color7", "color0" },
+//    [SchemeSel]  = { "color0", "color4" },
+//    [SchemeOut]  = { "color0", "color4" },
+//};
 /* -l option; if nonzero, dmenu uses vertical list with given number of lines */
 static unsigned int lines      = 0;
 

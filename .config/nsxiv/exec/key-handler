@@ -1,0 +1,11 @@
+#!/bin/sh
+# ~/.config/nsxiv/exec/key-handler
+
+case "$1" in
+    "Return") 
+        # Read the file and pass it to your wallpaper script
+        read -r file
+        # Execute the script you just created
+        ~/.local/bin/set-wallpaper <<< "$file"
+        ;;
+esac

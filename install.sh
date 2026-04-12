@@ -112,6 +112,19 @@ fi
 # 5. DOTFILES SETUP
 # ==========================================
 
+set_default_apps() {
+    local USERNAME=$1
+    echo "--> Setting default applications for: $USERNAME"
+
+    # We use 'sudo -u $USERNAME' to ensure the associations 
+    # are written to the correct user's ~/.config/mimeapps.list
+    
+    sudo -u "$USERNAME" xdg-mime default mpv.desktop video/mp4 video/x-matroska video/webm
+    sudo -u "$USERNAME" xdg-mime default nsxiv.desktop image/jpeg image/png image/gif
+    sudo -u "$USERNAME" xdg-mime default zathura.desktop application/pdf
+    sudo -u "$USERNAME" xdg-mime default soffice.desktop application/vnd.oasis.opendocument.text application/msword
+}
+
 setup_user_env() {
     local USERNAME=$1
     echo "--> Setting up environment for: $USERNAME"
@@ -138,17 +151,23 @@ setup_user_env() {
     # 3. Stow
     echo "    Stowing configuration..."
     sudo -u "$USERNAME" sh -c "cd $TARGET_DIR && stow ."
-    #
-    # 4. Fish Auto-start
+    
+    # 4. Set Default Applications
+    set_default_apps "$USERNAME"
+
+    # 5. Fish Auto-start
     local FISH_CONFIG_DIR="/home/$USERNAME/.config/fish"
     sudo -u "$USERNAME" mkdir -p "$FISH_CONFIG_DIR"
     local FISH_CONF="$FISH_CONFIG_DIR/config.fish"
     
     sudo -u "$USERNAME" touch "$FISH_CONF"
+
     
     if ! grep -q "startx" "$FISH_CONF"; then
         {
             echo "" 
+            echo 'set -gx EDITOR nvim'
+            echo 'set -gx VISUAL nvim'
             echo '# Auto-start X on TTY1' 
             echo 'if status is-login' 
             echo '    if test -z "$DISPLAY" -a "$XDG_VTNR" = 1' 
@@ -248,7 +267,20 @@ install_programs_from_source()
     else
         echo "WARNING: '$SCRIPT_DIR/dragon' folder not found. Skipping dragon."
     fi
+
+    # 4. INSTALL NSXIV 
+    if [ -d "$SCRIPT_DIR/nsxiv" ]; then
+        echo "    Compiling nsxiv..."
+        cd "$SCRIPT_DIR/nsxiv"
+        
+        # Clean and Install
+        make clean install
+        echo "    nsxiv installed."
+    else
+        echo "WARNING: '$SCRIPT_DIR/nsxiv' folder not found. Skipping nsxiv."
+    fi
 }
+
 
 setup_user_env "user"
 setup_user_env "work"
