@@ -1,32 +1,35 @@
 #!/bin/bash
-# ~/.local/bin/set-wallpaper.sh
 
+# Ensure a file was provided
 while read -r file; do
     [ -f "$file" ] || continue
 
-    # 1. Generate colors and set wallpaper
+    # 1. Generate colors (Wait for it to finish)
     wal -i "$file" -n
+    
+    # 2. Set the wallpaper with feh
+    # Using --bg-fill ensures it covers the screen correctly
     feh --bg-fill "$file"
     
-    # 2. Update Xresources
+    # 3. Force refresh Xresources so all apps see the new colors
     xrdb -merge ~/.cache/wal/colors.Xresources
     
-    # 3. Update application-specific configs
+    # 4. Update application configs
     ~/.local/bin/i3-theme.sh
     cp ~/.cache/wal/colors-polybar ~/.config/polybar/colors-polybar
     cp ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
 
-    # 4. Final Reload Cycle (Run once)
-    i3-msg reload > /dev/null 2>&1
+    # 5. Reload Everything
+    i3-msg reload
     polybar-msg cmd restart > /dev/null 2>&1
     
     # Restart Dunst
     pkill dunst
     dunst -config ~/.config/dunst/dunstrc &
     
-    # Refresh Kitty
+    # Refresh Kitty (if applicable)
     kill -USR1 "$(pgrep -u "$USER" kitty)" 2>/dev/null
     
-    # 5. Success Notification
+    # 6. Notification
     notify-send "Theme Applied" "Wallpaper: $(basename "$file")" -u normal
 done

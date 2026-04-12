@@ -1,6 +1,6 @@
 # --- Main Configuration ---
 set $mod Mod4
-
+include /tmp/i3-colors
 # Include the Gentoo Dark Theme
 #include themes/gentoo_dark
 include autostart.conf 
