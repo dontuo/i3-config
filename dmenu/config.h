@@ -7,6 +7,13 @@ static const char *fonts[] = {
 	"monospace:size=10"
 };
 static const char *prompt      = NULL;      /* -p  option; prompt to the left of input field */
+/* In config.h */
+static const char *xres[] = {
+    "dmenu.background",
+    "dmenu.foreground",
+    "dmenu.selbackground",
+    "dmenu.selforeground",
+};
 static const char *colors[SchemeLast][2] = {
 	/*     fg         bg       */
 	[SchemeNorm] = { "#bbbbbb", "#222222" },
