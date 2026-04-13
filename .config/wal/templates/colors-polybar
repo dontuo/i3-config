@@ -1,0 +1,9 @@
+[colors]
+background = {background}
+background-alt = {color8}
+foreground = {foreground}
+foreground-alt = {foreground}
+primary = {color1}
+secondary = {color2}
+alert = {color3}
+disabled = {color7}

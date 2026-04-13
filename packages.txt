@@ -63,3 +63,6 @@ base-devel
 feh
 python-pywal
 libspng
+gdkmm3
+gtkmm3
+libnotify
