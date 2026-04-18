@@ -1,0 +1,10 @@
+#!/bin/sh
+
+dir=$(dirname "$1")
+base=$(basename "$1")
+
+cd "$dir" || exit
+
+# print selected file first, then the rest
+printf "%s\n" "$base"
+ls | grep -v "^$base$"
